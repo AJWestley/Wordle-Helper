@@ -2,7 +2,10 @@ import os
 import msvcrt
 from random import choice
 from utils.dictionary import word_choices
-from utils.wordle import generate_feedback, filter_word_list
+from utils.wordle import filter_word_list
+from utils.entropy import top_n_entropy
+
+default_top5 = [('RATES', 6.0495), ('TALES', 6.0320), ('TEARS', 6.0277), ('SLATE', 5.9222), ('LANES', 5.9168)]
 
 class KeyInput:
     NULL = 0
@@ -13,8 +16,9 @@ class KeyInput:
 class MenuOption:
     ADD_GUESS = 1
     SHOW_WORDS = 2
-    GET_RECOMMENDATION = 3
-    EXIT = 4
+    GET_RANDOM_RECOMMENDATION = 3
+    GET_BEST_RECOMMENDATIONS = 4
+    EXIT = 5
 
 
 def get_number_of_words(word_list: set[str], containing: str = ''):
@@ -30,11 +34,17 @@ def get_word_recommendation(word_list: set[str], containing: str = ''):
     filtered_words = [word for word in word_list if all(letter in word for letter in containing)]
     return choice(filtered_words) if filtered_words else None
 
+def get_best_word_recommendations(word_list: set[str], n: int = 5, default: bool = True):
+    # if default:
+    #     return default_top5
+    return top_n_entropy(list(word_list), n)
+
 def display_menu(selected_option: int, guess_count: int, word_choices: set[str]):
     options = [
         'Add new guess and feedback',
         'Show possible words',
-        'Get a word recommendation',
+        'Get a random word recommendation',
+        'Get the top 5 word recommendations',
         'Exit'
     ]
     
@@ -79,9 +89,9 @@ def user_input(guess: int, word_choices: set[str]):
         display_menu(selected_option + 1, guess, word_choices)
         key_input = get_key_input()
         if key_input == KeyInput.UP:
-            selected_option = (selected_option - 1) % 4
+            selected_option = (selected_option - 1) % 5
         elif key_input == KeyInput.DOWN:
-            selected_option = (selected_option + 1) % 4
+            selected_option = (selected_option + 1) % 5
     return selected_option + 1
 
 def main():
@@ -101,7 +111,7 @@ def main():
             print()
             show_words(words, containing)
             input("\nPress Enter to continue...")
-        elif user_input_value == MenuOption.GET_RECOMMENDATION:
+        elif user_input_value == MenuOption.GET_RANDOM_RECOMMENDATION:
             containing = input("\nEnter letters that must be included (leave blank for none): ").strip().upper()
             print()
             recommendation = get_word_recommendation(words, containing)
@@ -109,6 +119,14 @@ def main():
                 print(f"Recommended word: {recommendation}")
             else:
                 print("No words found with the specified letters.")
+            input("\nPress Enter to continue...")
+        elif user_input_value == MenuOption.GET_BEST_RECOMMENDATIONS:
+            recommendations = get_best_word_recommendations(words, 5, guess_count == 1)
+            print("\nTop 5 word recommendations based on information gain:")
+            print(f'\nWord  | Information Gain')
+            print('-----------------------')
+            for rec in recommendations:
+                print(f'{rec[0]:<6}| {rec[1]:.4f}')
             input("\nPress Enter to continue...")
         elif user_input_value == MenuOption.EXIT:
             print("\nExiting the program...\n")
